@@ -1,6 +1,8 @@
 import sys
 from socket import socket, AF_INET, AF_INET6, SOCK_DGRAM, inet_ntoa
 
+j = 0
+
 # create UDP socket
 socket = socket(AF_INET, SOCK_DGRAM)
 cont = True
