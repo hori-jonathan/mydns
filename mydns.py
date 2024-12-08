@@ -1,7 +1,5 @@
 import sys
-from socket import socket, AF_INET, AF_INET6, SOCK_DGRAM, inet_ntoa
-
-j = 0
+from socket import socket, AF_INET, SOCK_DGRAM, inet_ntoa
 
 # create UDP socket
 socket = socket(AF_INET, SOCK_DGRAM)
@@ -46,8 +44,8 @@ def parse_name(index, response):
     loop = True
     while loop:
         # end of label serie
-        if (index == None or index >= len(response)):
-            return None, None
+        if index == None or response == None or response[index] == None:
+            break
         if response[index] == 0:
             loop = False
             if end == 0:
@@ -82,13 +80,10 @@ def parse_record(response, index):
     if rtype == 1:
         data = inet_ntoa(response[index:index + rlen])
         index+=rlen
-    elif rtype == 2 or rtype == 5:
+    elif rtype == 2:
         data, index = parse_name(index, response)
-    elif rtype == 28:
-        return None, None
     else:
-        data = response[index:index + rlen]
-        index+=rlen
+        return None, None
     
     return [rname, rtype, rclass, rttl, rlen, data], index
 
@@ -113,13 +108,19 @@ def parse_response(response):
 
     for i in range(ancount):
         data, index = parse_record(response, index)
-        answers.append(data)
+        if data != None:
+            answers.append(data)
+        else:
+            ancount-=1
     for i in range(nscount):
         data, index = parse_record(response, index)
-        nameservers.append(data)
+        if data != None:
+            nameservers.append(data)
+        else:
+            nscount-=1
     for i in range(arcount):
         data, index = parse_record(response, index)
-        if data is not None:
+        if data != None:
             additionals.append(data)
         else:
             arcount-=1
@@ -147,32 +148,35 @@ def run(response, server_address):
     for i in range(ancount):
         name = answers[i][0]
         ip = answers[i][5]
-        print(f"Name : {name}\tIP: {ip}")
+        print(f"\tName : {name}\tIP: {ip}")
     print("Authority Section:")
     for i in range(nscount):
+        if None in nameservers[i]:
+            nameservers.remove(nameservers[i])
+            continue
         name = nameservers[i][0]
         nameserver = nameservers[i][5]
-        print(f"Name : {name}\tName Server: {nameserver}")
-    print("Additional Information Section:")
+        print(f"\tName : {name}\tName Server: {nameserver}")
+    print("Additional Information Section:" if arcount > 0 else "")
     for i in range(arcount):
+        if None in additionals[i]:
+            additionals.remove(additionals[i])
+            continue
         name = additionals[i][0]
         ip = additionals[i][5]
-        print(f"Name : {name}\tIP : {ip}")
+        print(f"\tName : {name}\tIP : {ip}")
     
-    if (len(additionals) > 0):
-        for additional in additionals:
-            global id
-            id+=1
-            query = create_query(id, additional[0])
-            socket.sendto(query, (additional[5], 53))
-            response, server_address = socket.recvfrom(2048)
-            run(response, server_address)
+    return ancount, additionals[0]
 
 # send DNS query
-query = create_query(id, domain_name)
-socket.sendto(query, (root_dns_ip, 53))
-response, server_address = socket.recvfrom(2048)
-run(response, server_address)
+ancount = 0
+while(ancount == 0):
+    query = create_query(id, domain_name)
+    socket.sendto(query, (root_dns_ip, 53))
+    response, server_address = socket.recvfrom(2048)
+    ancount, additional = run(response, server_address)
+    root_dns_ip=additional[5]
+    id+=1
 
 #query = create_query(20, "m.edu-servers.net")
 #socket.sendto(query, ("192.55.83.30", 53))
