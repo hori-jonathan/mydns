@@ -166,7 +166,10 @@ def run(response, server_address):
         ip = additionals[i][5]
         print(f"\tName : {name}\tIP : {ip}")
     
-    return ancount, additionals[0]
+    if len(additionals) == 0:
+        return ancount, None
+    else:
+        return ancount, additionals[0]
 
 # send DNS query
 ancount = 0
@@ -175,7 +178,10 @@ while(ancount == 0):
     socket.sendto(query, (root_dns_ip, 53))
     response, server_address = socket.recvfrom(2048)
     ancount, additional = run(response, server_address)
-    root_dns_ip=additional[5]
+    if additional != None:
+        root_dns_ip=additional[5]
+    else:
+        break
     id+=1
 
 #query = create_query(20, "m.edu-servers.net")
