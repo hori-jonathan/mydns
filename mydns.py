@@ -184,7 +184,3 @@ while(ancount == 0):
         break
     id+=1
 
-#query = create_query(20, "m.edu-servers.net")
-#socket.sendto(query, ("192.55.83.30", 53))
-#response, server_address = socket.recvfrom(2048)
-#domain_name, root_dns_ip = run(response, server_address)
